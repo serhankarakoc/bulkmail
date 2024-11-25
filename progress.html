@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>İlerleme Durumu</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
+    <style>
+        #progress {
+            width: 100%;
+            background-color: #f3f3f3;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        #progress-bar {
+            height: 30px;
+            width: 0;
+            background-color: #4caf50;
+            text-align: center;
+            line-height: 30px;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>Mail Gönderimi İlerleme Durumu</h1>
+    <div id="progress">
+        <div id="progress-bar" style="width: {{.Progress}}%;">{{.SentCount}} / {{.Total}}</div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const progressBar = document.getElementById("progress-bar");
+            let total = {{.Total}};
+            let sentCount = {{.SentCount}};
+
+            const updateProgress = () => {
+                fetch('/progress')
+                    .then(response => response.text())
+                    .then(html => {
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(html, 'text/html');
+                        const newSentCount = parseInt(doc.querySelector("#progress-bar").innerHTML.split(" / ")[0]);
+                        const progress = (newSentCount / total) * 100;
+
+                        progressBar.style.width = progress + '%';
+                        progressBar.innerHTML = newSentCount + ' / ' + total;
+
+                        if (newSentCount >= total) {
+                            Swal.fire({
+                                title: 'Gönderim Tamamlandı!',
+                                text: 'Tüm e-postalar başarıyla gönderildi.',
+                                icon: 'success'
+                            });
+                            clearInterval(progressInterval);
+                        }
+                    })
+                    .catch(err => console.error('Progress update failed:', err));
+            };
+
+            const progressInterval = setInterval(updateProgress, 2000); // Her 2 saniyede bir günceller
+        });
+    </script>
+</body>
+</html>
