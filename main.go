@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/smtp"
 	"os"
-	"strconv"
 	"sync"
 	"time"
 
@@ -29,26 +28,17 @@ func sendEmail(to []string, subject, body, smtpServer, smtpPort, username, passw
 }
 
 // Toplu e-posta gönderimi
-func sendBulkEmails(recipients []string, subject, body string, batchSize int, delay time.Duration, smtpServer, smtpPort, username, password string) {
-	for i := 0; i < len(recipients); i += batchSize {
-		end := i + batchSize
-		if end > len(recipients) {
-			end = len(recipients)
+func sendBulkEmails(recipients []string, subject, body string, delay time.Duration, smtpServer, smtpPort, username, password string) {
+	for _, recipient := range recipients {
+		if err := sendEmail([]string{recipient}, subject, body, smtpServer, smtpPort, username, password); err != nil {
+			log.Printf("Failed to send email to %s: %s", recipient, err)
+		} else {
+			log.Printf("Email sent to %s successfully.", recipient)
 		}
-		batch := recipients[i:end]
-
-		for _, recipient := range batch {
-			if err := sendEmail([]string{recipient}, subject, body, smtpServer, smtpPort, username, password); err != nil {
-				log.Printf("Failed to send email to %s: %s", recipient, err)
-			} else {
-				log.Printf("Email sent to %s successfully.", recipient)
-			}
-			mu.Lock()
-			sentCount++
-			mu.Unlock()
-		}
-
-		if end < len(recipients) {
+		mu.Lock()
+		sentCount++
+		mu.Unlock()
+		if delay > 0 {
 			time.Sleep(delay)
 		}
 	}
@@ -112,13 +102,6 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sheetName := r.FormValue("sheetName")
-	batchSizeStr := r.FormValue("batchSize")
-	batchSize, err := strconv.Atoi(batchSizeStr)
-	if err != nil || batchSize <= 0 {
-		http.Error(w, "Geçersiz batch size değeri", http.StatusBadRequest)
-		return
-	}
-
 	smtpServer := r.FormValue("smtpServer")
 	smtpPort := r.FormValue("smtpPort")
 	username := r.FormValue("username")
@@ -155,7 +138,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	totalEmails = len(emails)
 	sentCount = 0
 
-	go sendBulkEmails(emails, "Toplu E-posta Konusu", templateContent, batchSize, 1*time.Minute, smtpServer, smtpPort, username, password)
+	go sendBulkEmails(emails, "Toplu E-posta Konusu", templateContent, 1*time.Minute, smtpServer, smtpPort, username, password)
 
 	http.Redirect(w, r, "/progress", http.StatusSeeOther)
 }
