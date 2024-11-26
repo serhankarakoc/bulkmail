@@ -25,6 +25,15 @@
                     <input type="file" name="templateFile" id="templateFile" accept=".html" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-500 focus:border-blue-500 p-2">
                 </div>
             </div>
+            
+            <!-- Konu alanı -->
+            <div class="mb-4">
+                <label for="subject" class="block text-sm font-medium text-gray-700">Konu:</label>
+                <div class="flex items-center border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-500 focus:border-blue-500 p-2">
+                    <input type="text" name="subject" id="subject" required class="mt-1 block w-full border-none outline-none focus:ring-0">
+                </div>
+            </div>
+
             <!-- İkinci satır -->
             <div class="grid grid-cols-2 gap-4 mb-4">
                 <div>
@@ -36,6 +45,7 @@
                     <input type="text" name="smtpPort" id="smtpPort" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-500 focus:border-blue-500 p-2">
                 </div>
             </div>
+
             <!-- Üçüncü satır -->
             <div class="grid grid-cols-2 gap-4 mb-6">
                 <div>
@@ -47,6 +57,7 @@
                     <input type="password" name="password" id="password" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-500 focus:border-blue-500 p-2">
                 </div>
             </div>
+
             <!-- Gönder Butonu -->
             <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2 rounded-md hover:bg-blue-700 transition duration-300">Gönder</button>
         </form>
