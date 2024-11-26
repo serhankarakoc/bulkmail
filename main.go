@@ -130,6 +130,8 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	subject := r.FormValue("subject")
+
 	emails, err := readEmailsFromExcel(tempFile.Name(), sheetName)
 	if err != nil {
 		http.Error(w, "Excel okuma hatası", http.StatusInternalServerError)
@@ -138,7 +140,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	totalEmails = len(emails)
 	sentCount = 0
 
-	go sendBulkEmails(emails, "Toplu E-posta Konusu", templateContent, 1*time.Minute, smtpServer, smtpPort, username, password)
+	go sendBulkEmails(emails, subject, templateContent, 1*time.Minute, smtpServer, smtpPort, username, password)
 
 	http.Redirect(w, r, "/progress", http.StatusSeeOther)
 }
@@ -164,7 +166,7 @@ func main() {
 	http.HandleFunc("/upload", uploadHandler)
 	http.HandleFunc("/progress", progressHandler)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "upload.html")
+		http.ServeFile(w, r, "index.html")
 	})
 
 	fmt.Println("Sunucu 8080 portunda çalışıyor...")
