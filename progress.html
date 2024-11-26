@@ -20,19 +20,38 @@
             line-height: 30px;
             color: white;
         }
+        #return-button {
+            display: none;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        #return-button:hover {
+            background-color: #45a049;
+        }
     </style>
 </head>
 <body>
     <h1>Mail Gönderimi İlerleme Durumu</h1>
     <div id="progress">
-        <div id="progress-bar" style="width: {{.Progress}}%;">{{.SentCount}} / {{.Total}}</div>
+        <div id="progress-bar" style="width: {{.Progress}}%">{{.SentCount}} / {{.Total}}</div>
     </div>
+
+    <button id="return-button" onclick="window.location.href='/'">Ana Sayfaya Dön</button>
 
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             const progressBar = document.getElementById("progress-bar");
+            const returnButton = document.getElementById("return-button");
             let total = {{.Total}};
-            let sentCount = {{.SentCount}};
 
             const updateProgress = () => {
                 fetch('/progress')
@@ -53,6 +72,7 @@
                                 icon: 'success'
                             });
                             clearInterval(progressInterval);
+                            returnButton.style.display = 'block'; // Butonu görünür yap
                         }
                     })
                     .catch(err => console.error('Progress update failed:', err));
