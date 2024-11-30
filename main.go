@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"html/template"
 	"io"
@@ -21,16 +22,35 @@ var (
 )
 
 // E-posta gönderme fonksiyonu
-func sendEmail(to []string, subject, body, smtpServer, smtpPort, username, password string) error {
-	msg := fmt.Sprintf("From: %s\nTo: %s\nSubject: %s\nMIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";\n\n%s", username, to[0], subject, body)
+func sendEmail(to []string, subject, smtpServer, smtpPort, username, password string) error {
+	// HTML şablonunu okumak için template dosyasını yükle
+	tmpl, err := template.ParseFiles("email_template.html")
+	if err != nil {
+		return fmt.Errorf("template error: %v", err)
+	}
+
+	// HTML içeriği hazırlamak için bir bytes.Buffer kullan
+	var bodyContent bytes.Buffer
+	err = tmpl.Execute(&bodyContent, struct{ Subject string }{Subject: subject})
+	if err != nil {
+		return fmt.Errorf("template execution error: %v", err)
+	}
+
+	// E-posta başlığında HTML formatını belirleyin
+	msg := fmt.Sprintf(
+		"From: %s\nTo: %s\nSubject: %s\nMIME-Version: 1.0\nContent-Type: text/html; charset=\"utf-8\"\n\n%s",
+		username, to[0], subject, bodyContent.String(),
+	)
+
+	// SMTP ile e-posta gönderimi
 	auth := smtp.PlainAuth("", username, password, smtpServer)
 	return smtp.SendMail(smtpServer+":"+smtpPort, auth, username, to, []byte(msg))
 }
 
 // Toplu e-posta gönderimi
-func sendBulkEmails(recipients []string, subject, body string, delay time.Duration, smtpServer, smtpPort, username, password string) {
+func sendBulkEmails(recipients []string, subject string, smtpServer, smtpPort, username, password string) {
 	for _, recipient := range recipients {
-		if err := sendEmail([]string{recipient}, subject, body, smtpServer, smtpPort, username, password); err != nil {
+		if err := sendEmail([]string{recipient}, subject, smtpServer, smtpPort, username, password); err != nil {
 			log.Printf("Failed to send email to %s: %s", recipient, err)
 		} else {
 			log.Printf("Email sent to %s successfully.", recipient)
@@ -38,9 +58,9 @@ func sendBulkEmails(recipients []string, subject, body string, delay time.Durati
 		mu.Lock()
 		sentCount++
 		mu.Unlock()
-		if delay > 0 {
-			time.Sleep(delay)
-		}
+
+		// Her e-posta gönderildikten sonra 3 saniye bekle
+		time.Sleep(3 * time.Second)
 	}
 }
 
@@ -66,19 +86,10 @@ func readEmailsFromExcel(filePath, sheetName string) ([]string, error) {
 	return emails, nil
 }
 
-// Şablon dosyasını okuma
-func readTemplateFromFile(templatePath string) (string, error) {
-	content, err := os.ReadFile(templatePath)
-	if err != nil {
-		return "", err
-	}
-	return string(content), nil
-}
-
 // E-posta gönderim yükleme işlemi
 func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.ServeFile(w, r, "upload.html")
+		http.ServeFile(w, r, "index.html")
 		return
 	}
 
@@ -106,30 +117,6 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	smtpPort := r.FormValue("smtpPort")
 	username := r.FormValue("username")
 	password := r.FormValue("password")
-
-	templateFile, _, err := r.FormFile("templateFile")
-	if err != nil {
-		http.Error(w, "Şablon dosyası yüklenemedi", http.StatusBadRequest)
-		return
-	}
-	defer templateFile.Close()
-	tempTemplateFile, err := os.CreateTemp("", "template-*.html")
-	if err != nil {
-		http.Error(w, "Şablon dosyası kaydedilemedi", http.StatusInternalServerError)
-		return
-	}
-	defer os.Remove(tempTemplateFile.Name())
-	defer tempTemplateFile.Close()
-	if _, err := io.Copy(tempTemplateFile, templateFile); err != nil {
-		http.Error(w, "Şablon dosyası kopyalama hatası", http.StatusInternalServerError)
-		return
-	}
-	templateContent, err := readTemplateFromFile(tempTemplateFile.Name())
-	if err != nil {
-		http.Error(w, "Şablon dosyası okunamadı", http.StatusInternalServerError)
-		return
-	}
-
 	subject := r.FormValue("subject")
 
 	emails, err := readEmailsFromExcel(tempFile.Name(), sheetName)
@@ -140,7 +127,8 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	totalEmails = len(emails)
 	sentCount = 0
 
-	go sendBulkEmails(emails, subject, templateContent, 1*time.Minute, smtpServer, smtpPort, username, password)
+	// E-postaları 3 saniye arayla göndermek için başlatıyoruz
+	go sendBulkEmails(emails, subject, smtpServer, smtpPort, username, password)
 
 	http.Redirect(w, r, "/progress", http.StatusSeeOther)
 }
